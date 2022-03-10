@@ -1,3 +1,4 @@
+Version: 0.2-release
 Sandbox envairoment:
 Primary: 192.168.60.88 (node1)
 Secondary: 192.168.60.89 (node2)
