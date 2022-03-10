@@ -91,16 +91,22 @@ host replication repuser slaveIP/24 trust
 #Restart postgres service
 ##sudo systemctl start postgresql-14
 
-#Create testtable
-CREATE TABLE testtable (websites varchar(100));
+#Move to master VM and create testtable
+
+sudo -u postgres psql -c "CREATE TABLE testtable (websites varchar(100));"
 
 #Verify
-select * from testtable;
+sudo -u postgres psql -c "select * from testtable;"
 
-#Put some record and check synchronization
+#Put some record and check synchronization, so move to slave and check if added record replicated on slave
 sudo -u postgres psql -c "INSERT INTO testtable VALUES ('test.com');"
 
-#Create script
+
+
+#Additionaly steps:
+##Description: Create script witch will be add news record to DB, and add to crontab. Observe how works your replication on slave (node2)
+
+###Create script
 
 #!/bin/bash
 # declare STRING variable
@@ -109,15 +115,17 @@ STRING="Add new record to DB - test"
 echo $STRING
 sudo -u postgres psql -c "INSERT INTO testtable VALUES ('aws-west-server$RANDOM.com');"
 
+#Give script executable privilages
 chmod +x add_record_script.sh
-
-
 
 #Add to crontab, every 5th minute
 
 touch /etc/crontab
 sudo nano /etc/crontab
 
+*/5 * * * * root sh <path_to_script>/add_record_script.sh
+
+EXAMPLE:
 */5 * * * * root sh /home/osboxes/add_record_script.sh
 
 ##Restart crontab.service
