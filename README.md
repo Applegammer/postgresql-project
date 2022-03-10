@@ -1,8 +1,11 @@
 # postgresql-project
 Postgres replication <br>
 master -> slave (test environment) <br>
-Version 0.1-release <br>
+Version 0.2-release <br>
 #####################
+
+Image of system: https://sourceforge.net/projects/osboxes/files/v/vb/10-C-nt/7/7.9-2009/CentOS-7.9-2009_VB-64bit.7z/download
+
 ### VM Environment (node1-master):
   Operating System: CentOS/7 <br>
   Kernel Version: 3.10.0-1160.45.1
