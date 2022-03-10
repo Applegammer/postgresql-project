@@ -1,1 +1,124 @@
-1
+Sandbox envairoment:
+Primary: 192.168.60.88 (node1)
+Secondary: 192.168.60.89 (node2)
+
+#Set VM master (node1)
+#Install posgresql on both VMs (node1,node2)
+
+## Add repo and install postgres package, inicialize DB
+
+sudo yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+
+sudo yum install -y postgresql14-server
+sudo /usr/pgsql-14/bin/postgresql-14-setup initdb
+sudo systemctl enable postgresql-14
+sudo systemctl start postgresql-14
+
+## can be skipped on the 2nd VM
+#sudo /usr/pgsql-14/bin/postgresql-14-setup initdb
+#sudo systemctl enable postgresql-14
+#sudo systemctl start postgresql-14
+
+# Set password for postgres user using the following command.
+sudo passwd postgres 
+
+# Create replication user in postgres
+
+##sudo -u postgres psql
+
+  CREATE USER repuser REPLICATION;
+  \q
+
+#Edit postgresql.conf
+
+##sudo nano /var/lib/pgsql/14/data/postgresql.conf
+
+listen_addresses = 'masterIP'
+port = 5432
+
+EXAMPLE:
+listen_addresses = '192.168.60.88'
+port = 5432
+
+#Authentication Configuration using pg_hba.conf
+
+sudo nano /var/lib/pgsql/14/data/pg_hba.conf
+host replication repuser MasterIP/24 trust
+
+#Restart postgres service
+sudo systemctl restart postgresql-14.service
+
+#Open Linux Firewall Port
+firewall-cmd --zone=public --add-port=5432/tcp --permanent
+firewall-cmd --reload
+
+#Check for Port IP
+netstat -nlp | grep 5432
+
+EXAMPLE:
+tcp        0      0 127.0.0.1:5432          0.0.0.0:*               LISTEN      1272/postgres
+tcp6       0      0 ::1:5432                :::*                    LISTEN      1272/postgres
+
+
+#Set VM slave (node2)
+
+#Switch to postgres user
+sudo su - postgres
+cd /var/lib/pgsql/14/data
+pwd
+
+#Run command to start replication beetween master - slave
+pg_basebackup -h 192.168.60.88 -U repuser --checkpoint=fast -D /var/lib/pgsql/14/data/ -R --slot=backup -C
+
+#Verify on node2 if replication has sucessfully
+ls -la
+#Exit from postgres user
+#Edit postgresql.conf
+##sudo nano /var/lib/pgsql/14/data/postgresql.conf
+
+listen_addresses = 'SlaveIP
+port = 5432
+
+EXAMPLE:
+listen_addresses = '192.168.60.89'
+port = 5432
+
+#Authentication Configuration using pg_hba.conf
+
+##sudo nano /var/lib/pgsql/14/data/pg_hba.conf
+host replication repuser slaveIP/24 trust
+
+#Restart postgres service
+##sudo systemctl start postgresql-14
+
+#Create testtable
+CREATE TABLE testtable (websites varchar(100));
+
+#Verify
+select * from testtable;
+
+#Put some record and check synchronization
+sudo -u postgres psql -c "INSERT INTO testtable VALUES ('test.com');"
+
+#Create script
+
+#!/bin/bash
+# declare STRING variable
+STRING="Add new record to DB - test"
+# print variable on a screen
+echo $STRING
+sudo -u postgres psql -c "INSERT INTO testtable VALUES ('aws-west-server$RANDOM.com');"
+
+chmod +x add_record_script.sh
+
+
+
+#Add to crontab, every 5th minute
+
+touch /etc/crontab
+sudo nano /etc/crontab
+
+*/5 * * * * root sh /home/osboxes/add_record_script.sh
+
+##Restart crontab.service
+sudo systemctl restart crond.service
